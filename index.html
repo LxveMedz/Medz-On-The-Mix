@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Medz on the Mix — Book a Session</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#0c0c0c;color:#e8e0d0;font-family:'DM Mono',monospace;min-height:100vh;}
@@ -47,7 +48,7 @@ body{background:#0c0c0c;color:#e8e0d0;font-family:'DM Mono',monospace;min-height
 .time-btn.sel{border-color:#c9a95a;background:#17140c;color:#c9a95a;}
 .time-btn.unavail{opacity:0.3;cursor:not-allowed;pointer-events:none;text-decoration:line-through;}
 .no-date-msg{font-size:12px;color:#555;padding:16px 0;}
-.notice-box{border:1px solid #3a2a1a;background:#1a1208;padding:14px 18px;margin-bottom:4px;font-size:12px;color:#aa7733;line-height:1.7;letter-spacing:0.02em;}
+.notice-box{border:1px solid #3a2a1a;background:#1a1208;padding:14px 18px;margin-bottom:12px;font-size:12px;color:#aa7733;line-height:1.7;letter-spacing:0.02em;}
 input[type=text],input[type=email],input[type=tel],textarea{background:#181818;border:1px solid #2a2a2a;color:#e8e0d0;font-family:'DM Mono',monospace;font-size:13px;padding:12px 16px;width:100%;outline:none;transition:border-color 0.2s;}
 input:focus,textarea:focus{border-color:#c9a95a;}
 input::placeholder,textarea::placeholder{color:#444;}
@@ -74,8 +75,9 @@ textarea{resize:vertical;}
 .btn-next:disabled,.btn-next.disabled{opacity:0.25;cursor:not-allowed;pointer-events:none;}
 .confirm-wrap{display:flex;align-items:center;justify-content:center;padding:60px 24px;}
 .confirm-inner{max-width:460px;width:100%;text-align:center;}
-.confirm-icon{width:64px;height:64px;border:1px solid #c9a95a;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 32px;color:#c9a95a;font-size:22px;}
-.confirm-h{font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:300;margin-bottom:12px;}
+.confirm-icon{width:80px;height:80px;border:2px solid #c9a95a;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 32px;color:#c9a95a;font-size:36px;animation:popIn 0.4s ease;}
+@keyframes popIn{from{transform:scale(0.5);opacity:0;}to{transform:scale(1);opacity:1;}}
+.confirm-h{font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:300;margin-bottom:12px;letter-spacing:0.04em;}
 .confirm-sub{color:#555;font-size:12px;letter-spacing:0.08em;margin-bottom:40px;}
 .confirm-box{border:1px solid #2a2a2a;background:#111;padding:24px;text-align:left;margin-bottom:32px;}
 .confirm-note{font-size:11px;color:#444;letter-spacing:0.05em;line-height:1.8;}
@@ -92,6 +94,8 @@ textarea{resize:vertical;}
 
 <div class="container">
 
+  <!-- Step 1 -->
+
   <div id="step1">
     <div class="page-title">
       <div class="page-sub">Session</div>
@@ -102,6 +106,8 @@ textarea{resize:vertical;}
       <button class="btn-next disabled" id="s1-next" onclick="goStep(2)">Continue →</button>
     </div>
   </div>
+
+  <!-- Step 2 -->
 
   <div id="step2" class="hidden">
     <div class="page-title">
@@ -125,6 +131,8 @@ textarea{resize:vertical;}
     </div>
   </div>
 
+  <!-- Step 3 -->
+
   <div id="step3" class="hidden">
     <div class="page-title">
       <div class="page-sub">Your Info</div>
@@ -139,6 +147,8 @@ textarea{resize:vertical;}
       <button class="btn-next disabled" id="s3-next" onclick="goStep(4)">Continue →</button>
     </div>
   </div>
+
+  <!-- Step 4 -->
 
   <div id="step4" class="hidden">
     <div class="page-title">
@@ -162,15 +172,17 @@ textarea{resize:vertical;}
     </div>
     <div class="nav">
       <button class="btn-back" onclick="goStep(3)">← Back</button>
-      <a class="btn-next disabled" id="pay-btn" target="_blank">Pay Deposit & Book →</a>
+      <a class="btn-next disabled" id="pay-btn" target="_self">Pay Deposit & Book →</a>
     </div>
   </div>
+
+  <!-- Step 5: Confirmation -->
 
   <div id="step5" class="hidden">
     <div class="confirm-wrap">
       <div class="confirm-inner">
         <div class="confirm-icon">✓</div>
-        <div class="confirm-h">You're Booked</div>
+        <div class="confirm-h">Session Booked!</div>
         <div class="confirm-sub" id="conf-email"></div>
         <div class="confirm-box">
           <div class="summary-row"><span class="summary-key" style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;">Session</span><span class="summary-val" id="conf-session"></span></div>
@@ -179,7 +191,7 @@ textarea{resize:vertical;}
           <div class="summary-row" style="margin-top:10px;"><span class="summary-key" style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;">Deposit Paid</span><span class="summary-val" id="conf-deposit"></span></div>
           <div class="summary-row" style="margin-top:10px;"><span class="summary-key" style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;">Balance Due</span><span class="summary-val" id="conf-balance"></span></div>
         </div>
-        <div class="confirm-note">Questions? Reach out to us directly.</div>
+        <div class="confirm-note">A confirmation email has been sent. Questions? Reach out to us directly.</div>
       </div>
     </div>
   </div>
@@ -187,58 +199,83 @@ textarea{resize:vertical;}
 </div>
 
 <script>
+// EmailJS init
+emailjs.init("ZEHYLqqBu87VmDxSy");
+
 const SESSIONS = [
-  { id:1, name:"1-Hour Block",  duration:"1 hr",  hours:1, price:30,  deposit:30,  desc:"Quick vocals, a single overdub, or a short session", stripe:"https://book.stripe.com/3cIdR80P27Nc2IzgFn48003" },
-  { id:2, name:"2-Hour Block",  duration:"2 hrs", hours:2, price:60,  deposit:30,  desc:"Quick vocals, overdubs, or podcast recording",          stripe:"https://book.stripe.com/eVq00i69maZo3MDdtb48000" },
-  { id:3, name:"Half Day",      duration:"4 hrs", hours:4, price:120, deposit:60,  desc:"Full artist session with engineer included",             stripe:"https://book.stripe.com/5kQ3cugO0c3sab160J48002" },
-  { id:4, name:"Full Day",      duration:"8 hrs", hours:8, price:240, deposit:120, desc:"All-day production — bring the whole team",             stripe:"https://book.stripe.com/14A28q0P2gjI3MD0Gp48001" },
+  { id:1, name:"1-Hour Block",  duration:"1 hr",  hours:1, price:30,  deposit:30,  desc:"Quick vocals, a single overdub, or a short session", stripe:"https://book.stripe.com/aFabJ08hu0kK82TgFn48004" },
+  { id:2, name:"2-Hour Block",  duration:"2 hrs", hours:2, price:60,  deposit:30,  desc:"Quick vocals, overdubs, or podcast recording",          stripe:"https://book.stripe.com/00w6oG2Xa8Rgbf54WF48006" },
+  { id:3, name:"Half Day",      duration:"4 hrs", hours:4, price:120, deposit:60,  desc:"Full artist session with engineer included",             stripe:"https://book.stripe.com/cNicN49ly8Rg5UL60J48005" },
+  { id:4, name:"Full Day",      duration:"8 hrs", hours:8, price:240, deposit:120, desc:"All-day production — bring the whole team",             stripe:"https://book.stripe.com/4gMcN4fJW8Rgcj9dtb48007" },
 ];
 
-// All possible slots
 const ALL_SLOTS     = ["4:00 PM","5:00 PM","6:00 PM","7:00 PM","8:00 PM","9:00 PM","10:00 PM","11:00 PM","12:00 AM"];
-// Mon-Thu restricted slots (4pm-7pm only — 4,5,6 PM; session must END by 7pm so only 1-hr fits at 6pm)
 const WEEKDAY_SLOTS = ["4:00 PM","5:00 PM","6:00 PM"];
-
 const TIME_TO_HOUR  = {"4:00 PM":16,"5:00 PM":17,"6:00 PM":18,"7:00 PM":19,"8:00 PM":20,"9:00 PM":21,"10:00 PM":22,"11:00 PM":23,"12:00 AM":24};
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAYS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+const WEEKDAY_BLOCKED_HOURS = [4,8];
 
-// Sessions blocked entirely on Mon-Thu (hours won't fit in 4pm-7pm window)
-const WEEKDAY_BLOCKED_HOURS = [4, 8]; // Half Day & Full Day
-
-let state = {
-  step:1, session:null, selDate:null, selTime:null,
-  termsChecked:false, calYear:new Date().getFullYear(), calMonth:new Date().getMonth()
-};
+let state = { step:1, session:null, selDate:null, selTime:null, termsChecked:false, calYear:new Date().getFullYear(), calMonth:new Date().getMonth() };
 const today = new Date();
 
-// helpers
-function isWeekday(d) {
-  // d = {day, month, year}
-  const dow = new Date(d.year, d.month, d.day).getDay(); // 0=Sun,1=Mon,...,6=Sat
-  return dow >= 1 && dow <= 4; // Mon=1 through Thu=4
-}
-function isDayBlockedForSession(d, session) {
-  if (!session) return false;
-  return isWeekday(d) && WEEKDAY_BLOCKED_HOURS.includes(session.hours);
-}
-function getSlotsForDate(d) {
-  return isWeekday(d) ? WEEKDAY_SLOTS : ALL_SLOTS;
-}
-function slotFitsOnWeekday(slot, hours) {
-  // slot must START + hours <= 19 (7pm)
-  const start = TIME_TO_HOUR[slot];
-  return start + hours <= 19;
-}
-
+// ── Helpers ──────────────────────────────────────────────
+function isWeekday(d){ const dow=new Date(d.year,d.month,d.day).getDay(); return dow>=1&&dow<=4; }
+function isDayBlocked(d,s){ return s&&isWeekday(d)&&WEEKDAY_BLOCKED_HOURS.includes(s.hours); }
+function getSlotsForDate(d){ return isWeekday(d)?WEEKDAY_SLOTS:ALL_SLOTS; }
+function slotFitsWeekday(t,h){ return TIME_TO_HOUR[t]+h<=19; }
 function dateKey(d){ return d.year+"-"+String(d.month+1).padStart(2,"0")+"-"+String(d.day).padStart(2,"0"); }
-function loadBookings(key){ try{ const v=localStorage.getItem("bookings:"+key); return v?JSON.parse(v):[]; }catch{ return []; } }
-function saveBooking(key,start,dur){ try{ const ex=loadBookings(key); ex.push({start,duration:dur}); localStorage.setItem("bookings:"+key,JSON.stringify(ex)); }catch(e){ console.error(e); } }
-function slotUnavailable(slot,bookings,hours){
-  const h=TIME_TO_HOUR[slot]; const dur=hours||1;
-  return bookings.some(b=>h<b.start+b.duration && h+dur>b.start);
+function loadBookings(k){ try{ const v=localStorage.getItem("bookings:"+k); return v?JSON.parse(v):[]; }catch{ return []; } }
+function saveBooking(k,start,dur){ try{ const ex=loadBookings(k); ex.push({start,duration:dur}); localStorage.setItem("bookings:"+k,JSON.stringify(ex)); }catch(e){ console.error(e); } }
+function slotTaken(t,bookings,h){ const s=TIME_TO_HOUR[t]; return bookings.some(b=>s<b.start+b.duration&&s+h>b.start); }
+
+// ── On page load: check for Stripe redirect ───────────────
+window.addEventListener("DOMContentLoaded", () => {
+  const params = new URLSearchParams(window.location.search);
+  if(params.get("success")==="true"){
+    const saved = localStorage.getItem("pendingBooking");
+    if(saved){
+      const booking = JSON.parse(saved);
+      // Save to availability
+      saveBooking(booking.dateKey, booking.startHour, booking.hours);
+      localStorage.removeItem("pendingBooking");
+      // Fire confirmation email
+      emailjs.send("service_ckbp1om","template_1xi3eba",{
+        to_email:    booking.email,
+        client_name: booking.name,
+        session_name:booking.sessionName,
+        session_date:booking.date,
+        session_time:booking.time,
+        deposit:     "$"+booking.deposit,
+        balance:     "$"+booking.balance+" due day of"
+      }).then(()=>console.log("Email sent")).catch(e=>console.error("Email error:",e));
+      // Show confirmation screen
+      showConfirmation(booking);
+      // Clean URL
+      window.history.replaceState({},"",window.location.pathname);
+      return;
+    }
+  }
+  // Normal load
+  renderSessions();
+  updateBanner();
+});
+
+function showConfirmation(b){
+  document.querySelectorAll("[id^=step]").forEach(el=>el.classList.add("hidden"));
+  document.getElementById("step5").classList.remove("hidden");
+  state.step=5;
+  document.getElementById("progress").style.width="100%";
+  document.getElementById("step-label").textContent="";
+  document.getElementById("conf-email").textContent="A confirmation email was sent to "+b.email;
+  document.getElementById("conf-session").textContent=b.sessionName;
+  document.getElementById("conf-date").textContent=b.date;
+  document.getElementById("conf-time").textContent=b.time;
+  document.getElementById("conf-deposit").textContent="$"+b.deposit;
+  document.getElementById("conf-balance").textContent="$"+b.balance+" day of";
 }
 
+// ── Navigation ────────────────────────────────────────────
 function goStep(n){
   document.getElementById("step"+state.step).classList.add("hidden");
   state.step=n;
@@ -248,16 +285,14 @@ function goStep(n){
   if(n===4) fillSummary();
   window.scrollTo(0,0);
 }
-
 function updateBanner(){
-  document.getElementById("progress").style.width = state.step<5 ? (state.step/4*100)+"%" : "100%";
-  document.getElementById("step-label").textContent = state.step<5 ? "STEP "+state.step+" / 4" : "";
+  document.getElementById("progress").style.width=state.step<5?(state.step/4*100)+"%":"100%";
+  document.getElementById("step-label").textContent=state.step<5?"STEP "+state.step+" / 4":"";
 }
 
-// STEP 1
+// ── Step 1 ────────────────────────────────────────────────
 function renderSessions(){
-  const el = document.getElementById("session-list");
-  el.innerHTML = SESSIONS.map(s => `
+  document.getElementById("session-list").innerHTML=SESSIONS.map(s=>`
     <div class="card${state.session&&state.session.id===s.id?" sel":""}" onclick="selectSession(${s.id})">
       <div class="card-row">
         <div><div class="card-name">${s.name}</div><div class="card-dur">${s.duration}</div></div>
@@ -265,149 +300,126 @@ function renderSessions(){
       </div>
       <div class="card-desc">${s.desc}</div>
       ${state.session&&state.session.id===s.id?'<div class="card-sel-tag">Selected ✓</div>':""}
-    </div>
-  `).join("");
+    </div>`).join("");
 }
 function selectSession(id){
-  state.session = SESSIONS.find(s=>s.id===id);
-  // reset date/time if the new session is blocked on the previously selected weekday
-  if(state.selDate && isDayBlockedForSession(state.selDate, state.session)){
-    state.selDate = null; state.selTime = null;
-  }
+  state.session=SESSIONS.find(s=>s.id===id);
+  if(state.selDate&&isDayBlocked(state.selDate,state.session)){ state.selDate=null; state.selTime=null; }
   renderSessions();
   document.getElementById("s1-next").classList.remove("disabled");
 }
-renderSessions();
 
-// STEP 2
+// ── Step 2 ────────────────────────────────────────────────
 function renderCal(){
-  const {calYear,calMonth} = state;
-  document.getElementById("cal-month").textContent = MONTHS[calMonth]+" "+calYear;
-  document.getElementById("cal-heads").innerHTML = DAYS.map(d=>`<div class="cal-head">${d}</div>`).join("");
-  const daysInMonth = new Date(calYear,calMonth+1,0).getDate();
-  const firstDay    = new Date(calYear,calMonth,1).getDay();
-  let html = "";
-  for(let i=0;i<firstDay;i++) html+=`<div style="width:36px;height:36px"></div>`;
-  for(let d=1;d<=daysInMonth;d++){
-    const dt = new Date(calYear,calMonth,d);
-    const isPast    = dt < new Date(today.getFullYear(),today.getMonth(),today.getDate());
-    const dateObj   = {day:d,month:calMonth,year:calYear};
-    const isBlocked = isDayBlockedForSession(dateObj, state.session);
-    const isSel     = state.selDate&&state.selDate.day===d&&state.selDate.month===calMonth&&state.selDate.year===calYear;
-    const isToday   = d===today.getDate()&&calMonth===today.getMonth()&&calYear===today.getFullYear();
-    let cls = "day";
-    if(isSel)          cls += " sel";
-    else if(isPast)    cls += " dis";
-    else if(isBlocked) cls += " noavail";
-    else if(isToday)   cls += " tod";
-    const title = isBlocked ? "No availability for this session on weekdays" : "";
-    html += `<div class="${cls}" title="${title}" onclick="selectDay(${d})">${d}</div>`;
+  const {calYear,calMonth}=state;
+  document.getElementById("cal-month").textContent=MONTHS[calMonth]+" "+calYear;
+  document.getElementById("cal-heads").innerHTML=DAYS.map(d=>`<div class="cal-head">${d}</div>`).join("");
+  const dim=new Date(calYear,calMonth+1,0).getDate();
+  const fd=new Date(calYear,calMonth,1).getDay();
+  let html="";
+  for(let i=0;i<fd;i++) html+=`<div style="width:36px;height:36px"></div>`;
+  for(let d=1;d<=dim;d++){
+    const dt=new Date(calYear,calMonth,d);
+    const past=dt<new Date(today.getFullYear(),today.getMonth(),today.getDate());
+    const dateObj={day:d,month:calMonth,year:calYear};
+    const blocked=isDayBlocked(dateObj,state.session);
+    const sel=state.selDate&&state.selDate.day===d&&state.selDate.month===calMonth&&state.selDate.year===calYear;
+    const tod=d===today.getDate()&&calMonth===today.getMonth()&&calYear===today.getFullYear();
+    let cls="day";
+    if(sel) cls+=" sel";
+    else if(past) cls+=" dis";
+    else if(blocked) cls+=" noavail";
+    else if(tod) cls+=" tod";
+    html+=`<div class="${cls}" onclick="selectDay(${d})">${d}</div>`;
   }
-  document.getElementById("cal-days").innerHTML = html;
+  document.getElementById("cal-days").innerHTML=html;
   renderTimes();
 }
 function prevMonth(){ if(state.calMonth===0){state.calMonth=11;state.calYear--;}else state.calMonth--; renderCal(); }
 function nextMonth(){ if(state.calMonth===11){state.calMonth=0;state.calYear++;}else state.calMonth++; renderCal(); }
 function selectDay(d){
-  const dateObj = {day:d,month:state.calMonth,year:state.calYear};
-  if(isDayBlockedForSession(dateObj, state.session)) return;
-  state.selDate = dateObj;
-  state.selTime = null;
-  renderCal();
+  const dateObj={day:d,month:state.calMonth,year:state.calYear};
+  if(isDayBlocked(dateObj,state.session)) return;
+  state.selDate=dateObj; state.selTime=null; renderCal();
 }
-
 function renderTimes(){
-  const area = document.getElementById("time-area");
+  const area=document.getElementById("time-area");
   if(!state.selDate){ area.innerHTML='<div class="no-date-msg">Select a date above to see available times.</div>'; return; }
-
-  const weekday  = isWeekday(state.selDate);
-  const slots    = getSlotsForDate(state.selDate);
-  const bookings = loadBookings(dateKey(state.selDate));
-  const hours    = state.session ? state.session.hours : 1;
-
-  let noticeHTML = "";
-  if(weekday){
-    noticeHTML = `<div class="notice-box" style="margin-bottom:12px;">⏰ Mon–Thu availability: 4:00 PM – 7:00 PM only</div>`;
-  }
-
-  const btns = slots.map(t=>{
-    const booked   = slotUnavailable(t, bookings, hours);
-    const noFit    = weekday && !slotFitsOnWeekday(t, hours);
-    const disabled = booked || noFit;
-    const sel      = state.selTime===t;
-    let label = t;
-    if(booked)  label += " — Booked";
-    else if(noFit) label += " — Too late";
-    return `<button class="time-btn${sel?" sel":""}${disabled?" unavail":""}" onclick="selectTime('${t}')">${label}</button>`;
-  }).join("");
-
-  area.innerHTML = noticeHTML + `<div class="time-grid">${btns}</div>`;
+  const weekday=isWeekday(state.selDate);
+  const slots=getSlotsForDate(state.selDate);
+  const bookings=loadBookings(dateKey(state.selDate));
+  const hours=state.session?state.session.hours:1;
+  let out=weekday?'<div class="notice-box">⏰ Mon–Thu availability: 4:00 PM – 7:00 PM only</div>':"";
+  out+=`<div class="time-grid">${slots.map(t=>{
+    const taken=slotTaken(t,bookings,hours);
+    const noFit=weekday&&!slotFitsWeekday(t,hours);
+    const dis=taken||noFit;
+    const sel=state.selTime===t;
+    return `<button class="time-btn${sel?" sel":""}${dis?" unavail":""}" onclick="selectTime('${t}')">${t}${taken?" — Booked":noFit?" — Too late":""}</button>`;
+  }).join("")}</div>`;
+  area.innerHTML=out;
   checkStep2();
 }
-
 function selectTime(t){ state.selTime=t; renderTimes(); checkStep2(); }
 function checkStep2(){
-  const btn = document.getElementById("s2-next");
-  if(state.selDate&&state.selTime) btn.classList.remove("disabled");
-  else btn.classList.add("disabled");
+  const btn=document.getElementById("s2-next");
+  (state.selDate&&state.selTime)?btn.classList.remove("disabled"):btn.classList.add("disabled");
 }
 
-// STEP 3
+// ── Step 3 ────────────────────────────────────────────────
 function checkStep3(){
-  const name  = document.getElementById("f-name").value.trim();
-  const email = document.getElementById("f-email").value;
-  const btn   = document.getElementById("s3-next");
-  if(name&&email.includes("@")) btn.classList.remove("disabled");
-  else btn.classList.add("disabled");
+  const ok=document.getElementById("f-name").value.trim()&&document.getElementById("f-email").value.includes("@");
+  document.getElementById("s3-next").classList[ok?"remove":"add"]("disabled");
 }
 
-// STEP 4
+// ── Step 4 ────────────────────────────────────────────────
 function fillSummary(){
-  const s = state.session;
-  document.getElementById("sum-session").textContent = s.name;
-  document.getElementById("sum-date").textContent    = MONTHS[state.selDate.month]+" "+state.selDate.day+", "+state.selDate.year;
-  document.getElementById("sum-time").textContent    = state.selTime;
-  document.getElementById("sum-total").textContent   = "$"+s.price;
-  document.getElementById("sum-deposit").textContent = "$"+s.deposit;
+  const s=state.session;
+  document.getElementById("sum-session").textContent=s.name;
+  document.getElementById("sum-date").textContent=MONTHS[state.selDate.month]+" "+state.selDate.day+", "+state.selDate.year;
+  document.getElementById("sum-time").textContent=state.selTime;
+  document.getElementById("sum-total").textContent="$"+s.price;
+  document.getElementById("sum-deposit").textContent="$"+s.deposit;
   updatePayBtn();
 }
 function toggleTerms(){
-  state.termsChecked = !state.termsChecked;
-  document.getElementById("check-sq").className   = "check-sq"+(state.termsChecked?" on":"");
-  document.getElementById("check-sq").textContent = state.termsChecked?"✓":"";
-  document.getElementById("terms-box").className  = "terms-box"+(state.termsChecked?" checked":"");
+  state.termsChecked=!state.termsChecked;
+  document.getElementById("check-sq").className="check-sq"+(state.termsChecked?" on":"");
+  document.getElementById("check-sq").textContent=state.termsChecked?"✓":"";
+  document.getElementById("terms-box").className="terms-box"+(state.termsChecked?" checked":"");
   updatePayBtn();
 }
 function updatePayBtn(){
-  const btn = document.getElementById("pay-btn");
+  const btn=document.getElementById("pay-btn");
   if(state.termsChecked&&state.session){
+    const s=state.session;
+    // Build redirect URL back to this page with ?success=true
+    const redirectURL=window.location.origin+window.location.pathname+"?success=true";
+    const stripeURL=s.stripe+"?success_url="+encodeURIComponent(redirectURL);
+    // Save everything to localStorage before leaving
+    const pending={
+      email:       document.getElementById("f-email").value,
+      name:        document.getElementById("f-name").value,
+      sessionName: s.name,
+      date:        MONTHS[state.selDate.month]+" "+state.selDate.day+", "+state.selDate.year,
+      time:        state.selTime,
+      deposit:     s.deposit,
+      balance:     s.price-s.deposit,
+      hours:       s.hours,
+      dateKey:     dateKey(state.selDate),
+      startHour:   TIME_TO_HOUR[state.selTime]
+    };
     btn.classList.remove("disabled");
-    btn.href    = state.session.stripe;
-    btn.onclick = function(){ setTimeout(()=>confirmBooking(),800); };
+    btn.href=s.stripe;
+    btn.onclick=function(){
+      localStorage.setItem("pendingBooking",JSON.stringify(pending));
+    };
   } else {
     btn.classList.add("disabled");
     btn.removeAttribute("href");
-    btn.onclick = null;
+    btn.onclick=null;
   }
 }
-function confirmBooking(){
-  if(state.selDate&&state.selTime&&state.session){
-    saveBooking(dateKey(state.selDate),TIME_TO_HOUR[state.selTime],state.session.hours);
-  }
-  goStep(5);
-  const s     = state.session;
-  const email = document.getElementById("f-email").value;
-  document.getElementById("conf-email").textContent   = "Confirmation sent to "+email;
-  document.getElementById("conf-session").textContent = s.name;
-  document.getElementById("conf-date").textContent    = MONTHS[state.selDate.month]+" "+state.selDate.day+", "+state.selDate.year;
-  document.getElementById("conf-time").textContent    = state.selTime;
-  document.getElementById("conf-deposit").textContent = "$"+s.deposit;
-  document.getElementById("conf-balance").textContent = "$"+(s.price-s.deposit)+" day of";
-  document.getElementById("progress").style.width     = "100%";
-  document.getElementById("step-label").textContent   = "";
-}
-
-updateBanner();
 </script>
 
 </body>
