@@ -36,16 +36,18 @@ body{background:#0c0c0c;color:#e8e0d0;font-family:'DM Mono',monospace;min-height
 .cal-grid{display:grid;grid-template-columns:repeat(7,36px);gap:4px;justify-content:center;}
 .cal-head{width:36px;text-align:center;font-size:10px;color:#3a3a3a;letter-spacing:0.1em;margin-bottom:6px;}
 .day{width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;border:1px solid transparent;background:transparent;color:#e8e0d0;transition:all 0.15s;}
-.day:hover:not(.dis):not(.sel){border-color:#2a2a2a;background:#181818;}
+.day:hover:not(.dis):not(.sel):not(.noavail){border-color:#2a2a2a;background:#181818;}
 .day.sel{background:#c9a95a;color:#0c0c0c;font-weight:500;}
 .day.tod{border-color:rgba(201,169,90,0.27);}
 .day.dis{opacity:0.2;cursor:not-allowed;pointer-events:none;}
+.day.noavail{opacity:0.25;cursor:not-allowed;pointer-events:none;text-decoration:line-through;}
 .time-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
 .time-btn{padding:10px 8px;border:1px solid #2a2a2a;background:#111;color:#e8e0d0;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all 0.15s;text-align:center;width:100%;}
 .time-btn:hover:not(.sel):not(.unavail){border-color:rgba(201,169,90,0.27);background:#151515;}
 .time-btn.sel{border-color:#c9a95a;background:#17140c;color:#c9a95a;}
 .time-btn.unavail{opacity:0.3;cursor:not-allowed;pointer-events:none;text-decoration:line-through;}
 .no-date-msg{font-size:12px;color:#555;padding:16px 0;}
+.notice-box{border:1px solid #3a2a1a;background:#1a1208;padding:14px 18px;margin-bottom:4px;font-size:12px;color:#aa7733;line-height:1.7;letter-spacing:0.02em;}
 input[type=text],input[type=email],input[type=tel],textarea{background:#181818;border:1px solid #2a2a2a;color:#e8e0d0;font-family:'DM Mono',monospace;font-size:13px;padding:12px 16px;width:100%;outline:none;transition:border-color 0.2s;}
 input:focus,textarea:focus{border-color:#c9a95a;}
 input::placeholder,textarea::placeholder{color:#444;}
@@ -96,8 +98,7 @@ textarea{resize:vertical;}
       <div class="page-h">Choose your session</div>
     </div>
     <div id="session-list"></div>
-    <div class="nav">
-      <div></div>
+    <div class="nav"><div></div>
       <button class="btn-next disabled" id="s1-next" onclick="goStep(2)">Continue →</button>
     </div>
   </div>
@@ -193,18 +194,50 @@ const SESSIONS = [
   { id:4, name:"Full Day",      duration:"8 hrs", hours:8, price:240, deposit:120, desc:"All-day production — bring the whole team",             stripe:"https://book.stripe.com/14A28q0P2gjI3MD0Gp48001" },
 ];
 
-const TIME_SLOTS = ["4:00 PM","5:00 PM","6:00 PM","7:00 PM","8:00 PM","9:00 PM","10:00 PM","11:00 PM","12:00 AM"];
-const TIME_TO_HOUR = {"4:00 PM":16,"5:00 PM":17,"6:00 PM":18,"7:00 PM":19,"8:00 PM":20,"9:00 PM":21,"10:00 PM":22,"11:00 PM":23,"12:00 AM":24};
-const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const DAYS = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+// All possible slots
+const ALL_SLOTS     = ["4:00 PM","5:00 PM","6:00 PM","7:00 PM","8:00 PM","9:00 PM","10:00 PM","11:00 PM","12:00 AM"];
+// Mon-Thu restricted slots (4pm-7pm only — 4,5,6 PM; session must END by 7pm so only 1-hr fits at 6pm)
+const WEEKDAY_SLOTS = ["4:00 PM","5:00 PM","6:00 PM"];
 
-let state = { step:1, session:null, selDate:null, selTime:null, termsChecked:false, calYear:new Date().getFullYear(), calMonth:new Date().getMonth() };
+const TIME_TO_HOUR  = {"4:00 PM":16,"5:00 PM":17,"6:00 PM":18,"7:00 PM":19,"8:00 PM":20,"9:00 PM":21,"10:00 PM":22,"11:00 PM":23,"12:00 AM":24};
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAYS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+
+// Sessions blocked entirely on Mon-Thu (hours won't fit in 4pm-7pm window)
+const WEEKDAY_BLOCKED_HOURS = [4, 8]; // Half Day & Full Day
+
+let state = {
+  step:1, session:null, selDate:null, selTime:null,
+  termsChecked:false, calYear:new Date().getFullYear(), calMonth:new Date().getMonth()
+};
 const today = new Date();
+
+// helpers
+function isWeekday(d) {
+  // d = {day, month, year}
+  const dow = new Date(d.year, d.month, d.day).getDay(); // 0=Sun,1=Mon,...,6=Sat
+  return dow >= 1 && dow <= 4; // Mon=1 through Thu=4
+}
+function isDayBlockedForSession(d, session) {
+  if (!session) return false;
+  return isWeekday(d) && WEEKDAY_BLOCKED_HOURS.includes(session.hours);
+}
+function getSlotsForDate(d) {
+  return isWeekday(d) ? WEEKDAY_SLOTS : ALL_SLOTS;
+}
+function slotFitsOnWeekday(slot, hours) {
+  // slot must START + hours <= 19 (7pm)
+  const start = TIME_TO_HOUR[slot];
+  return start + hours <= 19;
+}
 
 function dateKey(d){ return d.year+"-"+String(d.month+1).padStart(2,"0")+"-"+String(d.day).padStart(2,"0"); }
 function loadBookings(key){ try{ const v=localStorage.getItem("bookings:"+key); return v?JSON.parse(v):[]; }catch{ return []; } }
 function saveBooking(key,start,dur){ try{ const ex=loadBookings(key); ex.push({start,duration:dur}); localStorage.setItem("bookings:"+key,JSON.stringify(ex)); }catch(e){ console.error(e); } }
-function slotUnavailable(slot,bookings,hours){ const h=TIME_TO_HOUR[slot]; const dur=hours||1; return bookings.some(b=>h<b.start+b.duration && h+dur>b.start); }
+function slotUnavailable(slot,bookings,hours){
+  const h=TIME_TO_HOUR[slot]; const dur=hours||1;
+  return bookings.some(b=>h<b.start+b.duration && h+dur>b.start);
+}
 
 function goStep(n){
   document.getElementById("step"+state.step).classList.add("hidden");
@@ -217,14 +250,14 @@ function goStep(n){
 }
 
 function updateBanner(){
-  const pct=(state.step/4)*100;
-  document.getElementById("progress").style.width=state.step<5?pct+"%":"100%";
-  document.getElementById("step-label").textContent=state.step<5?"STEP "+state.step+" / 4":"";
+  document.getElementById("progress").style.width = state.step<5 ? (state.step/4*100)+"%" : "100%";
+  document.getElementById("step-label").textContent = state.step<5 ? "STEP "+state.step+" / 4" : "";
 }
 
+// STEP 1
 function renderSessions(){
-  const el=document.getElementById("session-list");
-  el.innerHTML=SESSIONS.map(s=>`
+  const el = document.getElementById("session-list");
+  el.innerHTML = SESSIONS.map(s => `
     <div class="card${state.session&&state.session.id===s.id?" sel":""}" onclick="selectSession(${s.id})">
       <div class="card-row">
         <div><div class="card-name">${s.name}</div><div class="card-dur">${s.duration}</div></div>
@@ -235,123 +268,143 @@ function renderSessions(){
     </div>
   `).join("");
 }
-
 function selectSession(id){
-  state.session=SESSIONS.find(s=>s.id===id);
+  state.session = SESSIONS.find(s=>s.id===id);
+  // reset date/time if the new session is blocked on the previously selected weekday
+  if(state.selDate && isDayBlockedForSession(state.selDate, state.session)){
+    state.selDate = null; state.selTime = null;
+  }
   renderSessions();
   document.getElementById("s1-next").classList.remove("disabled");
 }
 renderSessions();
 
+// STEP 2
 function renderCal(){
-  const {calYear,calMonth}=state;
-  document.getElementById("cal-month").textContent=MONTHS[calMonth]+" "+calYear;
-  document.getElementById("cal-heads").innerHTML=DAYS.map(d=>`<div class="cal-head">${d}</div>`).join("");
-  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
-  const firstDay=new Date(calYear,calMonth,1).getDay();
-  let html="";
+  const {calYear,calMonth} = state;
+  document.getElementById("cal-month").textContent = MONTHS[calMonth]+" "+calYear;
+  document.getElementById("cal-heads").innerHTML = DAYS.map(d=>`<div class="cal-head">${d}</div>`).join("");
+  const daysInMonth = new Date(calYear,calMonth+1,0).getDate();
+  const firstDay    = new Date(calYear,calMonth,1).getDay();
+  let html = "";
   for(let i=0;i<firstDay;i++) html+=`<div style="width:36px;height:36px"></div>`;
   for(let d=1;d<=daysInMonth;d++){
-    const dt=new Date(calYear,calMonth,d);
-    const isDisabled=dt<new Date(today.getFullYear(),today.getMonth(),today.getDate());
-    const isSel=state.selDate&&state.selDate.day===d&&state.selDate.month===calMonth&&state.selDate.year===calYear;
-    const isToday=d===today.getDate()&&calMonth===today.getMonth()&&calYear===today.getFullYear();
-    let cls="day";
-    if(isSel) cls+=" sel";
-    else if(isDisabled) cls+=" dis";
-    else if(isToday) cls+=" tod";
-    html+=`<div class="${cls}" onclick="selectDay(${d})">${d}</div>`;
+    const dt = new Date(calYear,calMonth,d);
+    const isPast    = dt < new Date(today.getFullYear(),today.getMonth(),today.getDate());
+    const dateObj   = {day:d,month:calMonth,year:calYear};
+    const isBlocked = isDayBlockedForSession(dateObj, state.session);
+    const isSel     = state.selDate&&state.selDate.day===d&&state.selDate.month===calMonth&&state.selDate.year===calYear;
+    const isToday   = d===today.getDate()&&calMonth===today.getMonth()&&calYear===today.getFullYear();
+    let cls = "day";
+    if(isSel)          cls += " sel";
+    else if(isPast)    cls += " dis";
+    else if(isBlocked) cls += " noavail";
+    else if(isToday)   cls += " tod";
+    const title = isBlocked ? "No availability for this session on weekdays" : "";
+    html += `<div class="${cls}" title="${title}" onclick="selectDay(${d})">${d}</div>`;
   }
-  document.getElementById("cal-days").innerHTML=html;
+  document.getElementById("cal-days").innerHTML = html;
   renderTimes();
 }
-
 function prevMonth(){ if(state.calMonth===0){state.calMonth=11;state.calYear--;}else state.calMonth--; renderCal(); }
 function nextMonth(){ if(state.calMonth===11){state.calMonth=0;state.calYear++;}else state.calMonth++; renderCal(); }
-
 function selectDay(d){
-  state.selDate={day:d,month:state.calMonth,year:state.calYear};
-  state.selTime=null;
+  const dateObj = {day:d,month:state.calMonth,year:state.calYear};
+  if(isDayBlockedForSession(dateObj, state.session)) return;
+  state.selDate = dateObj;
+  state.selTime = null;
   renderCal();
 }
 
 function renderTimes(){
-  const area=document.getElementById("time-area");
+  const area = document.getElementById("time-area");
   if(!state.selDate){ area.innerHTML='<div class="no-date-msg">Select a date above to see available times.</div>'; return; }
-  const bookings=loadBookings(dateKey(state.selDate));
-  const hours=state.session?state.session.hours:1;
-  const btns=TIME_SLOTS.map(t=>{
-    const unavail=slotUnavailable(t,bookings,hours);
-    const sel=state.selTime===t;
-    return `<button class="time-btn${sel?" sel":""}${unavail?" unavail":""}" onclick="selectTime('${t}')">${t}${unavail?" — Booked":""}</button>`;
+
+  const weekday  = isWeekday(state.selDate);
+  const slots    = getSlotsForDate(state.selDate);
+  const bookings = loadBookings(dateKey(state.selDate));
+  const hours    = state.session ? state.session.hours : 1;
+
+  let noticeHTML = "";
+  if(weekday){
+    noticeHTML = `<div class="notice-box" style="margin-bottom:12px;">⏰ Mon–Thu availability: 4:00 PM – 7:00 PM only</div>`;
+  }
+
+  const btns = slots.map(t=>{
+    const booked   = slotUnavailable(t, bookings, hours);
+    const noFit    = weekday && !slotFitsOnWeekday(t, hours);
+    const disabled = booked || noFit;
+    const sel      = state.selTime===t;
+    let label = t;
+    if(booked)  label += " — Booked";
+    else if(noFit) label += " — Too late";
+    return `<button class="time-btn${sel?" sel":""}${disabled?" unavail":""}" onclick="selectTime('${t}')">${label}</button>`;
   }).join("");
-  area.innerHTML=`<div class="time-grid">${btns}</div>`;
+
+  area.innerHTML = noticeHTML + `<div class="time-grid">${btns}</div>`;
   checkStep2();
 }
 
 function selectTime(t){ state.selTime=t; renderTimes(); checkStep2(); }
 function checkStep2(){
-  const btn=document.getElementById("s2-next");
+  const btn = document.getElementById("s2-next");
   if(state.selDate&&state.selTime) btn.classList.remove("disabled");
   else btn.classList.add("disabled");
 }
 
+// STEP 3
 function checkStep3(){
-  const name=document.getElementById("f-name").value.trim();
-  const email=document.getElementById("f-email").value;
-  const btn=document.getElementById("s3-next");
+  const name  = document.getElementById("f-name").value.trim();
+  const email = document.getElementById("f-email").value;
+  const btn   = document.getElementById("s3-next");
   if(name&&email.includes("@")) btn.classList.remove("disabled");
   else btn.classList.add("disabled");
 }
 
+// STEP 4
 function fillSummary(){
-  const s=state.session;
-  document.getElementById("sum-session").textContent=s.name;
-  document.getElementById("sum-date").textContent=MONTHS[state.selDate.month]+" "+state.selDate.day+", "+state.selDate.year;
-  document.getElementById("sum-time").textContent=state.selTime;
-  document.getElementById("sum-total").textContent="$"+s.price;
-  document.getElementById("sum-deposit").textContent="$"+s.deposit;
+  const s = state.session;
+  document.getElementById("sum-session").textContent = s.name;
+  document.getElementById("sum-date").textContent    = MONTHS[state.selDate.month]+" "+state.selDate.day+", "+state.selDate.year;
+  document.getElementById("sum-time").textContent    = state.selTime;
+  document.getElementById("sum-total").textContent   = "$"+s.price;
+  document.getElementById("sum-deposit").textContent = "$"+s.deposit;
   updatePayBtn();
 }
-
 function toggleTerms(){
-  state.termsChecked=!state.termsChecked;
-  const sq=document.getElementById("check-sq");
-  const box=document.getElementById("terms-box");
-  sq.className="check-sq"+(state.termsChecked?" on":"");
-  sq.textContent=state.termsChecked?"✓":"";
-  box.className="terms-box"+(state.termsChecked?" checked":"");
+  state.termsChecked = !state.termsChecked;
+  document.getElementById("check-sq").className   = "check-sq"+(state.termsChecked?" on":"");
+  document.getElementById("check-sq").textContent = state.termsChecked?"✓":"";
+  document.getElementById("terms-box").className  = "terms-box"+(state.termsChecked?" checked":"");
   updatePayBtn();
 }
-
 function updatePayBtn(){
-  const btn=document.getElementById("pay-btn");
+  const btn = document.getElementById("pay-btn");
   if(state.termsChecked&&state.session){
     btn.classList.remove("disabled");
-    btn.href=state.session.stripe;
-    btn.onclick=function(){ setTimeout(()=>confirmBooking(),800); };
+    btn.href    = state.session.stripe;
+    btn.onclick = function(){ setTimeout(()=>confirmBooking(),800); };
   } else {
     btn.classList.add("disabled");
     btn.removeAttribute("href");
-    btn.onclick=null;
+    btn.onclick = null;
   }
 }
-
 function confirmBooking(){
   if(state.selDate&&state.selTime&&state.session){
     saveBooking(dateKey(state.selDate),TIME_TO_HOUR[state.selTime],state.session.hours);
   }
   goStep(5);
-  const s=state.session;
-  const email=document.getElementById("f-email").value;
-  document.getElementById("conf-email").textContent="Confirmation sent to "+email;
-  document.getElementById("conf-session").textContent=s.name;
-  document.getElementById("conf-date").textContent=MONTHS[state.selDate.month]+" "+state.selDate.day+", "+state.selDate.year;
-  document.getElementById("conf-time").textContent=state.selTime;
-  document.getElementById("conf-deposit").textContent="$"+s.deposit;
-  document.getElementById("conf-balance").textContent="$"+(s.price-s.deposit)+" day of";
-  document.getElementById("progress").style.width="100%";
-  document.getElementById("step-label").textContent="";
+  const s     = state.session;
+  const email = document.getElementById("f-email").value;
+  document.getElementById("conf-email").textContent   = "Confirmation sent to "+email;
+  document.getElementById("conf-session").textContent = s.name;
+  document.getElementById("conf-date").textContent    = MONTHS[state.selDate.month]+" "+state.selDate.day+", "+state.selDate.year;
+  document.getElementById("conf-time").textContent    = state.selTime;
+  document.getElementById("conf-deposit").textContent = "$"+s.deposit;
+  document.getElementById("conf-balance").textContent = "$"+(s.price-s.deposit)+" day of";
+  document.getElementById("progress").style.width     = "100%";
+  document.getElementById("step-label").textContent   = "";
 }
 
 updateBanner();
