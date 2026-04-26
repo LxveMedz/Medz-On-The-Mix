@@ -234,7 +234,7 @@ function hide(id){ document.getElementById(id).classList.add("hidden"); }
     saveBooking(b.dateKey, b.startHour, b.hours);
     // Send confirmation email
     emailjs.send("service_ckbp1om","template_1xi3eba",{
-      to_email:     b.email,
+      email:        b.email,
       client_name:  b.name,
       session_name: b.sessionName,
       session_date: b.date,
