@@ -161,6 +161,10 @@ textarea{resize:vertical;}
       <div class="check-sq" id="check-sq"></div>
       <div class="terms-text">I understand and agree that the deposit is non-refundable if I am a no-show or late to the session.</div>
     </div>
+    <div class="terms-box" id="cancel-box" onclick="toggleCancel()">
+      <div class="check-sq" id="cancel-sq"></div>
+      <div class="terms-text">I understand that cancellations must be made at least 72 hours in advance or the deposit will be forfeited.</div>
+    </div>
     <div class="nav">
       <button class="btn-back" onclick="goStep(3)">← Back</button>
       <a class="btn-next disabled" id="pay-btn">Pay Deposit & Book →</a>
@@ -204,7 +208,7 @@ const MONTHS = ["January","February","March","April","May","June","July","August
 const DAYS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 const BLOCKED_HOURS = [4,8];
 
-let state = { step:1, session:null, selDate:null, selTime:null, termsChecked:false, calYear:new Date().getFullYear(), calMonth:new Date().getMonth() };
+let state = { step:1, session:null, selDate:null, selTime:null, termsChecked:false, cancelChecked:false, calYear:new Date().getFullYear(), calMonth:new Date().getMonth() };
 const today = new Date();
 
 // ── Helpers ───────────────────────────────────────────────
@@ -376,9 +380,16 @@ function toggleTerms(){
   document.getElementById("terms-box").className="terms-box"+(state.termsChecked?" checked":"");
   updatePayBtn();
 }
+function toggleCancel(){
+  state.cancelChecked=!state.cancelChecked;
+  document.getElementById("cancel-sq").className="check-sq"+(state.cancelChecked?" on":"");
+  document.getElementById("cancel-sq").textContent=state.cancelChecked?"✓":"";
+  document.getElementById("cancel-box").className="terms-box"+(state.cancelChecked?" checked":"");
+  updatePayBtn();
+}
 function updatePayBtn(){
   const btn=document.getElementById("pay-btn");
-  if(state.termsChecked&&state.session){
+  if(state.termsChecked&&state.cancelChecked&&state.session){
     const s=state.session;
     // Save booking details to localStorage before navigating to Stripe
     const pending={
@@ -406,6 +417,12 @@ function updatePayBtn(){
   }
 }
 </script>
+
+<div style="text-align:center;padding:32px 24px;border-top:1px solid #1e1e1e;margin-top:40px;">
+  <button onclick="window.location.href='cancellation-policy.html'" style="background:transparent;color:#555;border:1px solid #2a2a2a;padding:12px 28px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;letter-spacing:0.1em;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.borderColor='#555';this.style.color='#e8e0d0';" onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#555';">
+    Cancellation Policy
+  </button>
+</div>
 
 </body>
 </html>
