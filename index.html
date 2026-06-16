@@ -1,12 +1,10 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Medz on the Mix — Book a Session</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#0c0c0c;color:#e8e0d0;font-family:'DM Mono',monospace;min-height:100vh;}
@@ -61,7 +59,7 @@ textarea{resize:vertical;}
 .summary-dep{border-top:1px solid #2a2a2a;padding-top:12px;display:flex;justify-content:space-between;align-items:baseline;margin-top:4px;}
 .dep-label{font-size:12px;color:#c9a95a;letter-spacing:0.06em;}
 .dep-amount{font-family:'Cormorant Garamond',serif;font-size:28px;color:#c9a95a;}
-.terms-box{border:1px solid #2a2a2a;background:#111;padding:16px 20px;margin-bottom:24px;display:flex;align-items:flex-start;gap:14px;cursor:pointer;}
+.terms-box{border:1px solid #2a2a2a;background:#111;padding:16px 20px;margin-bottom:12px;display:flex;align-items:flex-start;gap:14px;cursor:pointer;}
 .terms-box:hover{border-color:rgba(201,169,90,0.33);}
 .terms-box.checked{border-color:#c9a95a;background:#17140c;}
 .check-sq{width:20px;height:20px;border:1px solid #2a2a2a;background:#0c0c0c;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;margin-top:1px;}
@@ -70,8 +68,8 @@ textarea{resize:vertical;}
 .nav{margin-top:48px;display:flex;justify-content:space-between;align-items:center;}
 .btn-back{background:transparent;color:#777;border:1px solid #2a2a2a;padding:14px 24px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;transition:all 0.2s;text-transform:uppercase;letter-spacing:0.08em;}
 .btn-back:hover{border-color:#555;color:#e8e0d0;}
-.btn-next{background:#c9a95a;color:#0c0c0c;border:none;padding:14px 32px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;letter-spacing:0.1em;cursor:pointer;transition:opacity 0.2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
-.btn-next:hover{opacity:0.85;}
+.btn-next{background:#c9a95a;color:#0c0c0c;border:none;padding:14px 32px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;letter-spacing:0.1em;cursor:pointer;transition:opacity 0.2s;text-transform:uppercase;}
+.btn-next:hover:not(:disabled){opacity:0.85;}
 .btn-next:disabled,.btn-next.disabled{opacity:0.25;cursor:not-allowed;pointer-events:none;}
 .confirm-wrap{display:flex;align-items:center;justify-content:center;padding:60px 24px;}
 .confirm-inner{max-width:460px;width:100%;text-align:center;}
@@ -81,6 +79,8 @@ textarea{resize:vertical;}
 .confirm-sub{color:#555;font-size:12px;letter-spacing:0.08em;margin-bottom:40px;}
 .confirm-box{border:1px solid #2a2a2a;background:#111;padding:24px;text-align:left;margin-bottom:32px;}
 .confirm-note{font-size:11px;color:#444;letter-spacing:0.05em;line-height:1.8;}
+.toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#1a1208;border:1px solid #c9a95a55;color:#aa7733;padding:12px 24px;font-size:12px;letter-spacing:0.05em;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:999;}
+.toast.show{opacity:1;}
 .hidden{display:none;}
 </style>
 </head>
@@ -93,6 +93,7 @@ textarea{resize:vertical;}
 </div>
 
 <div class="container">
+
   <div id="step1">
     <div class="page-title">
       <div class="page-sub">Session</div>
@@ -167,7 +168,7 @@ textarea{resize:vertical;}
     </div>
     <div class="nav">
       <button class="btn-back" onclick="goStep(3)">← Back</button>
-      <a class="btn-next disabled" id="pay-btn">Pay Deposit & Book →</a>
+      <button class="btn-next disabled" id="pay-btn" onclick="handlePay()">Pay Deposit & Book →</button>
     </div>
   </div>
 
@@ -184,31 +185,45 @@ textarea{resize:vertical;}
           <div class="summary-row" style="margin-top:10px;"><span class="summary-key" style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;">Deposit Paid</span><span class="summary-val" id="conf-deposit"></span></div>
           <div class="summary-row" style="margin-top:10px;"><span class="summary-key" style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;">Balance Due</span><span class="summary-val" id="conf-balance"></span></div>
         </div>
-        <div class="confirm-note">A confirmation email has been sent to you. Questions? Reach out to us directly.</div>
+        <div class="confirm-note">A confirmation email has been sent to you. Questions? Reach out to medzonthemix@gmail.com</div>
       </div>
     </div>
   </div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<div style="text-align:center;padding:32px 24px;border-top:1px solid #1e1e1e;margin-top:40px;">
+  <button onclick="window.location.href='cancellation-policy.html'" style="background:transparent;color:#555;border:1px solid #2a2a2a;padding:12px 28px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;letter-spacing:0.1em;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.borderColor='#555';this.style.color='#e8e0d0';" onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#555';">
+    Cancellation Policy
+  </button>
 </div>
 
 <script>
-// ── EmailJS init ──────────────────────────────────────────
-(function(){ emailjs.init("ZEHYLqqBu87VmDxSy"); })();
+// ── Config ────────────────────────────────────────────────
+// Replace with your Koyeb backend URL after deploying
+const BACKEND_URL = 'https://your-app-name.koyeb.app';
 
 // ── Data ─────────────────────────────────────────────────
 const SESSIONS = [
-  { id:1, name:"1-Hour Block",  duration:"1 hr",  hours:1, price:30,  deposit:30,  desc:"Quick vocals, a single overdub, or a short session", stripe:"https://book.stripe.com/aFabJ08hu0kK82TgFn48004" },
-  { id:2, name:"2-Hour Block",  duration:"2 hrs", hours:2, price:60,  deposit:30,  desc:"Quick vocals, overdubs, or podcast recording",          stripe:"https://book.stripe.com/00w6oG2Xa8Rgbf54WF48006" },
-  { id:3, name:"Half Day",      duration:"4 hrs", hours:4, price:120, deposit:60,  desc:"Full artist session with engineer included",             stripe:"https://book.stripe.com/cNicN49ly8Rg5UL60J48005" },
-  { id:4, name:"Full Day",      duration:"8 hrs", hours:8, price:240, deposit:120, desc:"All-day production — bring the whole team",             stripe:"https://book.stripe.com/4gMcN4fJW8Rgcj9dtb48007" },
+  { id:1, name:"1-Hour Block", duration:"1 hr",  hours:1, price:30,  deposit:30,  desc:"Quick vocals, a single overdub, or a short session" },
+  { id:2, name:"2-Hour Block", duration:"2 hrs", hours:2, price:60,  deposit:30,  desc:"Quick vocals, overdubs, or podcast recording" },
+  { id:3, name:"Half Day",     duration:"4 hrs", hours:4, price:120, deposit:60,  desc:"Full artist session with engineer included" },
+  { id:4, name:"Full Day",     duration:"8 hrs", hours:8, price:240, deposit:120, desc:"All-day production — bring the whole team" },
 ];
 const ALL_SLOTS     = ["4:00 PM","5:00 PM","6:00 PM","7:00 PM","8:00 PM","9:00 PM","10:00 PM","11:00 PM","12:00 AM"];
 const WEEKDAY_SLOTS = ["4:00 PM","5:00 PM","6:00 PM"];
 const TIME_TO_HOUR  = {"4:00 PM":16,"5:00 PM":17,"6:00 PM":18,"7:00 PM":19,"8:00 PM":20,"9:00 PM":21,"10:00 PM":22,"11:00 PM":23,"12:00 AM":24};
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAYS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
-const BLOCKED_HOURS = [4,8];
+const BLOCKED_HOURS = [4, 8];
 
-let state = { step:1, session:null, selDate:null, selTime:null, termsChecked:false, cancelChecked:false, calYear:new Date().getFullYear(), calMonth:new Date().getMonth() };
+let state = {
+  step:1, session:null, selDate:null, selTime:null,
+  termsChecked:false, cancelChecked:false,
+  calYear:new Date().getFullYear(), calMonth:new Date().getMonth()
+};
 const today = new Date();
 
 // ── Helpers ───────────────────────────────────────────────
@@ -222,43 +237,45 @@ function slotFits(t,h){ return TIME_TO_HOUR[t]+h<=19; }
 function fmtDate(d){ return MONTHS[d.month]+" "+d.day+", "+d.year; }
 function show(id){ document.getElementById(id).classList.remove("hidden"); }
 function hide(id){ document.getElementById(id).classList.add("hidden"); }
+function showToast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),3500); }
 
-// ── Boot: check for Stripe ?success=true redirect ─────────
+// ── Boot: check URL params from Stripe redirect ───────────
 (function boot(){
   const params = new URLSearchParams(window.location.search);
-  const isSuccess = params.get("success") === "true";
-  const saved = localStorage.getItem("pendingBooking");
 
-  if(isSuccess && saved){
-    // Clean URL immediately
-    window.history.replaceState({},"",window.location.pathname);
-    const b = JSON.parse(saved);
-    localStorage.removeItem("pendingBooking");
-    // Save slot as booked
-    saveBooking(b.dateKey, b.startHour, b.hours);
-    // Send confirmation email
-    emailjs.send("service_ckbp1om","template_1xi3eba",{
-      email:        b.email,
-      client_name:  b.name,
-      session_name: b.sessionName,
-      session_date: b.date,
-      session_time: b.time,
-      deposit:      "$"+b.deposit,
-      balance:      "$"+b.balance+" due day of"
-    }).then(function(){ console.log("Email sent OK"); })
-      .catch(function(err){ console.error("EmailJS error:", JSON.stringify(err)); });
-    // Show confirmation screen
-    hide("step1");
-    show("step5");
-    document.getElementById("progress").style.width="100%";
-    document.getElementById("step-label").textContent="";
-    document.getElementById("conf-email").textContent="A confirmation email was sent to "+b.email;
-    document.getElementById("conf-session").textContent=b.sessionName;
-    document.getElementById("conf-date").textContent=b.date;
-    document.getElementById("conf-time").textContent=b.time;
-    document.getElementById("conf-deposit").textContent="$"+b.deposit;
-    document.getElementById("conf-balance").textContent="$"+b.balance+" day of";
-    return; // stop — do not run normal init
+  // Successful Stripe payment return
+  if(params.get("booked") === "true"){
+    window.history.replaceState({}, "", window.location.pathname);
+    const saved = sessionStorage.getItem("pendingBooking");
+    if(saved){
+      const b = JSON.parse(saved);
+      sessionStorage.removeItem("pendingBooking");
+      saveBooking(b.dateKey, b.startHour, b.hours);
+      showConfirmation(b);
+    } else {
+      // Rare: sessionStorage cleared, still show success
+      document.querySelectorAll("[id^=step]").forEach(el=>el.classList.add("hidden"));
+      show("step5");
+      document.getElementById("progress").style.width="100%";
+      document.getElementById("step-label").textContent="";
+      document.getElementById("conf-email").textContent="Your payment was confirmed.";
+      document.getElementById("conf-session").textContent="—";
+      document.getElementById("conf-date").textContent="—";
+      document.getElementById("conf-time").textContent="—";
+      document.getElementById("conf-deposit").textContent="—";
+      document.getElementById("conf-balance").textContent="—";
+    }
+    return;
+  }
+
+  // Cancelled Stripe payment return
+  if(params.get("cancelled") === "true"){
+    window.history.replaceState({}, "", window.location.pathname);
+    sessionStorage.removeItem("pendingBooking");
+    renderSessions();
+    updateBanner();
+    showToast("Payment cancelled — you can try again anytime.");
+    return;
   }
 
   // Normal page load
@@ -266,10 +283,18 @@ function hide(id){ document.getElementById(id).classList.add("hidden"); }
   updateBanner();
 })();
 
-// ── Banner ────────────────────────────────────────────────
-function updateBanner(){
-  document.getElementById("progress").style.width = state.step<5?(state.step/4*100)+"%":"100%";
-  document.getElementById("step-label").textContent = state.step<5?"STEP "+state.step+" / 4":"";
+// ── Confirmation screen ───────────────────────────────────
+function showConfirmation(b){
+  document.querySelectorAll("[id^=step]").forEach(el=>el.classList.add("hidden"));
+  show("step5");
+  document.getElementById("progress").style.width="100%";
+  document.getElementById("step-label").textContent="";
+  document.getElementById("conf-email").textContent="A confirmation email was sent to "+b.email;
+  document.getElementById("conf-session").textContent=b.sessionName;
+  document.getElementById("conf-date").textContent=b.date;
+  document.getElementById("conf-time").textContent=b.time;
+  document.getElementById("conf-deposit").textContent="$"+b.deposit;
+  document.getElementById("conf-balance").textContent="$"+b.balance+" day of";
 }
 
 // ── Navigation ────────────────────────────────────────────
@@ -281,6 +306,10 @@ function goStep(n){
   if(n===2) renderCal();
   if(n===4) fillSummary();
   window.scrollTo(0,0);
+}
+function updateBanner(){
+  document.getElementById("progress").style.width=state.step<5?(state.step/4*100)+"%":"100%";
+  document.getElementById("step-label").textContent=state.step<5?"STEP "+state.step+" / 4":"";
 }
 
 // ── Step 1 ────────────────────────────────────────────────
@@ -390,39 +419,65 @@ function toggleCancel(){
 function updatePayBtn(){
   const btn=document.getElementById("pay-btn");
   if(state.termsChecked&&state.cancelChecked&&state.session){
-    const s=state.session;
-    // Save booking details to localStorage before navigating to Stripe
-    const pending={
-      email:       document.getElementById("f-email").value,
-      name:        document.getElementById("f-name").value,
-      sessionName: s.name,
-      date:        fmtDate(state.selDate),
-      time:        state.selTime,
-      deposit:     s.deposit,
-      balance:     s.price-s.deposit,
-      hours:       s.hours,
-      dateKey:     dateKey(state.selDate),
-      startHour:   TIME_TO_HOUR[state.selTime]
-    };
     btn.classList.remove("disabled");
-    btn.href=s.stripe;
-    btn.target="_self";
-    btn.onclick=function(){
-      localStorage.setItem("pendingBooking",JSON.stringify(pending));
-    };
   } else {
     btn.classList.add("disabled");
-    btn.removeAttribute("href");
-    btn.onclick=null;
+  }
+}
+
+// ── Pay handler — fetches Stripe checkout URL from backend ─
+async function handlePay(){
+  const btn=document.getElementById("pay-btn");
+  btn.textContent="Processing...";
+  btn.classList.add("disabled");
+
+  const pending = {
+    email:       document.getElementById("f-email").value,
+    name:        document.getElementById("f-name").value,
+    sessionName: state.session.name,
+    date:        fmtDate(state.selDate),
+    time:        state.selTime,
+    deposit:     state.session.deposit,
+    balance:     state.session.price - state.session.deposit,
+    hours:       state.session.hours,
+    dateKey:     dateKey(state.selDate),
+    startHour:   TIME_TO_HOUR[state.selTime],
+  };
+
+  // Store booking details for confirmation screen after redirect
+  sessionStorage.setItem("pendingBooking", JSON.stringify(pending));
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/create-checkout-session`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId:  state.session.id,
+        clientName: pending.name,
+        clientEmail:pending.email,
+        date:       pending.date,
+        time:       pending.time,
+        notes:      document.getElementById("f-notes").value || "",
+        dateKey:    pending.dateKey,
+        startHour:  pending.startHour,
+        hours:      pending.hours,
+      }),
+    });
+
+    const data = await res.json();
+    if(data.url){
+      window.location.href = data.url;
+    } else {
+      throw new Error(data.error || "No checkout URL returned");
+    }
+  } catch(err){
+    console.error("Checkout error:", err);
+    btn.textContent="Pay Deposit & Book →";
+    btn.classList.remove("disabled");
+    sessionStorage.removeItem("pendingBooking");
+    showToast("Something went wrong. Please try again.");
   }
 }
 </script>
-
-<div style="text-align:center;padding:32px 24px;border-top:1px solid #1e1e1e;margin-top:40px;">
-  <button onclick="window.location.href='cancellation-policy.html'" style="background:transparent;color:#555;border:1px solid #2a2a2a;padding:12px 28px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;letter-spacing:0.1em;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.borderColor='#555';this.style.color='#e8e0d0';" onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#555';">
-    Cancellation Policy
-  </button>
-</div>
-
 </body>
 </html>
