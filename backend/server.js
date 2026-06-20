@@ -1,4 +1,5 @@
 require('dotenv').config();
+
 const express = require('express');
 const cors    = require('cors');
 const { Pool } = require('pg');
@@ -10,11 +11,10 @@ const PORT = process.env.PORT || 8000;
 // ── Database Connection (Supabase) ────────────────────────
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false } // Required for Supabase connection pooling on Render
+  ssl: { rejectUnauthorized: false }
 });
 
 // ── Middleware ────────────────────────────────────────────
-// Webhook MUST receive raw body — register before express.json()
 app.use('/api/stripe-webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 app.use(cors({ origin: 'https://lxvemedz.github.io' }));
@@ -47,7 +47,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
             name:        `${session.name} — Medz on the Mix`,
             description: `Session on ${date} at ${time}`,
           },
-          unit_amount: session.deposit, // in cents
+          unit_amount: session.deposit,
         },
         quantity: 1,
       }],
@@ -126,18 +126,18 @@ app.post('/api/stripe-webhook', async (req, res) => {
         console.log('Confirmation email sent to', m.clientEmail);
       }
 
-      // 2. Save Booking to Supabase Database
+      // 2. Save Booking to Supabase — now includes session_hours for overlap detection
       const insertQuery = `
-        INSERT INTO "Bookings" (date, start_time, client_name, client_email, session_name)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO "Bookings" (date, start_time, client_name, client_email, session_name, session_hours)
+        VALUES ($1, $2, $3, $4, $5, $6)
       `;
-      const values = [m.date, m.time, m.clientName, m.clientEmail, m.sessionName];
-      
+      const values = [m.date, m.time, m.clientName, m.clientEmail, m.sessionName, parseInt(m.hours)];
+
       await pool.query(insertQuery, values);
-      console.log('Successfully saved booking to Supabase database!');
+      console.log('Booking saved to Supabase:', m.sessionName, m.date, m.time, `(${m.hours}hrs)`);
 
     } catch (err) {
-      console.error('Failed to process completed booking (email or DB insert):', err.message);
+      console.error('Failed to process completed booking:', err.message);
     }
   }
 
@@ -145,9 +145,11 @@ app.post('/api/stripe-webhook', async (req, res) => {
 });
 
 // ── GET /api/booked-slots ─────────────────────────────────
+// Returns date, start_time, and session_hours so the frontend
+// can do proper overlap detection across all devices
 app.get('/api/booked-slots', async (req, res) => {
   try {
-    const result = await pool.query('SELECT date, start_time FROM "Bookings"');
+    const result = await pool.query('SELECT date, start_time, session_hours FROM "Bookings"');
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -158,6 +160,6 @@ app.get('/api/booked-slots', async (req, res) => {
 app.get('/health', (_, res) => res.json({ status: 'ok', service: 'Medz on the Mix API' }));
 
 // ── Start ─────────────────────────────────────────────────
-app.listen(PORT,'0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Medz on the Mix backend running on port ${PORT}`);
 });
