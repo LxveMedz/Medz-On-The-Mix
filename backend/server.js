@@ -94,8 +94,12 @@ app.post('/api/stripe-webhook', async (req, res) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
+  // ── Payment confirmed: send email + save to Supabase ───
   if (event.type === 'checkout.session.completed') {
-    const m = event.data.object.metadata;
+    const checkoutSession = event.data.object;
+    const m = checkoutSession.metadata;
+    const paymentIntentId = checkoutSession.payment_intent;
+
     console.log(`Payment confirmed for ${m.clientName} — ${m.sessionName} on ${m.date}`);
 
     try {
@@ -126,18 +130,72 @@ app.post('/api/stripe-webhook', async (req, res) => {
         console.log('Confirmation email sent to', m.clientEmail);
       }
 
-      // 2. Save Booking to Supabase — now includes session_hours for overlap detection
+      // 2. Save booking to Supabase — includes payment_intent_id for refund tracking
       const insertQuery = `
-        INSERT INTO "Bookings" (date, start_time, client_name, client_email, session_name, session_hours)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO "Bookings" (date, start_time, client_name, client_email, session_name, session_hours, payment_intent_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
       `;
-      const values = [m.date, m.time, m.clientName, m.clientEmail, m.sessionName, parseInt(m.hours)];
+      const values = [
+        m.date, m.time, m.clientName, m.clientEmail,
+        m.sessionName, parseInt(m.hours), paymentIntentId
+      ];
 
       await pool.query(insertQuery, values);
-      console.log('Booking saved to Supabase:', m.sessionName, m.date, m.time, `(${m.hours}hrs)`);
+      console.log('Booking saved to Supabase:', m.sessionName, m.date, m.time);
 
     } catch (err) {
       console.error('Failed to process completed booking:', err.message);
+    }
+  }
+
+  // ── Full refund: remove booking from Supabase so slot opens back up ───
+  if (event.type === 'charge.refunded') {
+    const charge = event.data.object;
+
+    // Only remove the slot if it was a FULL refund
+    if (charge.refunded) {
+      const paymentIntentId = charge.payment_intent;
+      try {
+        const result = await pool.query(
+          'DELETE FROM "Bookings" WHERE payment_intent_id = $1',
+          [paymentIntentId]
+        );
+        console.log(`Booking removed after full refund — payment_intent: ${paymentIntentId}`);
+      } catch (err) {
+        console.error('Failed to remove booking after refund:', err.message);
+      }
+    } else {
+      console.log('Partial refund detected — slot remains blocked.');
+    }
+  }
+
+  // ── Refund: release the time slot back ──────────────────
+  if (event.type === 'charge.refunded') {
+    const charge = event.data.object;
+
+    // Only release slot on FULL refund
+    if (charge.amount_refunded !== charge.amount) {
+      console.log('Partial refund — slot not released');
+      return res.json({ received: true });
+    }
+
+    try {
+      // Look up the checkout session via payment intent to get booking metadata
+      const sessions = await stripe.checkout.sessions.list({
+        payment_intent: charge.payment_intent,
+        limit: 1,
+      });
+
+      if (sessions.data.length > 0) {
+        const m = sessions.data[0].metadata;
+        await pool.query(
+          'DELETE FROM "Bookings" WHERE date = $1 AND start_time = $2',
+          [m.date, m.time]
+        );
+        console.log(`Slot released after refund: ${m.date} at ${m.time}`);
+      }
+    } catch (err) {
+      console.error('Failed to release slot after refund:', err.message);
     }
   }
 
@@ -145,8 +203,6 @@ app.post('/api/stripe-webhook', async (req, res) => {
 });
 
 // ── GET /api/booked-slots ─────────────────────────────────
-// Returns date, start_time, and session_hours so the frontend
-// can do proper overlap detection across all devices
 app.get('/api/booked-slots', async (req, res) => {
   try {
     const result = await pool.query('SELECT date, start_time, session_hours FROM "Bookings"');
