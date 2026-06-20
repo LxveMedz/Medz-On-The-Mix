@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 8000;
 // Webhook MUST receive raw body — register before express.json()
 app.use('/api/stripe-webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
-app.use(cors({ origin: process.env.FRONTEND_URL || 'https://lxvemedz.github.io' }));
+app.use(cors({ origin: 'https://lxvemedz.github.io' }));
 
 // ── Server-side pricing (single source of truth) ─────────
 const SESSIONS = {
@@ -45,8 +45,8 @@ app.post('/api/create-checkout-session', async (req, res) => {
         quantity: 1,
       }],
       mode:           'payment',
-      success_url:    `${process.env.FRONTEND_URL}?booked=true`,
-      cancel_url:     `${process.env.FRONTEND_URL}?cancelled=true`,
+      success_url:    `https://lxvemedz.github.io/Medz-On-The-Mix?booked=true`,
+      cancel_url:     `https://lxvemedz.github.io/Medz-On-The-Mix?cancelled=true`,
       customer_email: clientEmail,
       metadata: {
         clientName:  clientName.slice(0, 499),
