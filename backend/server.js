@@ -144,6 +144,16 @@ app.post('/api/stripe-webhook', async (req, res) => {
   res.json({ received: true });
 });
 
+// ── GET /api/booked-slots ─────────────────────────────────
+app.get('/api/booked-slots', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT date, start_time FROM "Bookings"');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Health check ──────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ status: 'ok', service: 'Medz on the Mix API' }));
 
