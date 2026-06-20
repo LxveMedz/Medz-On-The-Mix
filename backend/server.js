@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 8000;
 // Webhook MUST receive raw body — register before express.json()
 app.use('/api/stripe-webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
-app.use(cors({ origin: process.env.FRONTEND_URL }));
+app.use(cors({ origin: process.env.FRONTEND_URL || 'https://lxvemedz.github.io' }));
 
 // ── Server-side pricing (single source of truth) ─────────
 const SESSIONS = {
