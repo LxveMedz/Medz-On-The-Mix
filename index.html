@@ -202,9 +202,31 @@ textarea{resize:vertical;}
 
 <script>
 // ── Config ────────────────────────────────────────────────
-// Replace with your Render backend URL after deploying
+// Replace with your Koyeb backend URL after deploying
 const BACKEND_URL = 'https://medz-on-the-mix-backend.onrender.com';
 
+// ── Cross-device availability (Supabase) ──────────────────
+let allBookedSlots = [];
+
+async function fetchBookedSlots() {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/booked-slots`);
+    if (res.ok) allBookedSlots = await res.json();
+  } catch(e) {
+    console.error('Could not fetch availability:', e);
+  }
+}
+
+// Merges Supabase bookings (cross-device) with localStorage (immediate local)
+function getBookingsForDate(dateStr) {
+  const fromDB = allBookedSlots
+    .filter(b => b.date === dateStr)
+    .map(b => ({ start: TIME_TO_HOUR[b.start_time] || 0, duration: Number(b.session_hours) || 1 }));
+  const fromLocal = loadBookings(dateStr);
+  const all = [...fromDB];
+  fromLocal.forEach(l => { if(!all.some(d => d.start === l.start)) all.push(l); });
+  return all;
+}
 
 // ── Data ─────────────────────────────────────────────────
 const SESSIONS = [
@@ -213,7 +235,7 @@ const SESSIONS = [
   { id:3, name:"Half Day",     duration:"4 hrs", hours:4, price:120, deposit:60,  desc:"Full artist session with engineer included" },
   { id:4, name:"Full Day",     duration:"8 hrs", hours:8, price:240, deposit:120, desc:"All-day production — bring the whole team" },
 ];
-const ALL_SLOTS     = ["4:00 PM","5:00 PM","6:00 PM","7:00 PM","8:00 PM","9:00 PM","10:00 PM","11:00 PM"];
+const ALL_SLOTS     = ["4:00 PM","5:00 PM","6:00 PM","7:00 PM","8:00 PM","9:00 PM","10:00 PM","11:00 PM","12:00 AM"];
 const WEEKDAY_SLOTS = ["4:00 PM","5:00 PM","6:00 PM"];
 const TIME_TO_HOUR  = {"4:00 PM":16,"5:00 PM":17,"6:00 PM":18,"7:00 PM":19,"8:00 PM":20,"9:00 PM":21,"10:00 PM":22,"11:00 PM":23,"12:00 AM":24};
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -304,7 +326,7 @@ function goStep(n){
   state.step=n;
   show("step"+n);
   updateBanner();
-  if(n===2) renderCal();
+  if(n===2){ fetchBookedSlots(); renderCal(); }
   if(n===4) fillSummary();
   window.scrollTo(0,0);
 }
@@ -369,7 +391,7 @@ function renderTimes(){
   if(!state.selDate){ area.innerHTML='<div class="no-date-msg">Select a date above to see available times.</div>'; return; }
   const wd=isWeekday(state.selDate);
   const slots=wd?WEEKDAY_SLOTS:ALL_SLOTS;
-  const bks=loadBookings(dateKey(state.selDate));
+  const bks=getBookingsForDate(fmtDate(state.selDate));
   const h=state.session?state.session.hours:1;
   let out=wd?'<div class="notice-box">⏰ Mon–Thu availability: 4:00 PM – 7:00 PM only</div>':"";
   out+=`<div class="time-grid">${slots.map(t=>{
