@@ -130,6 +130,6 @@ app.post('/api/stripe-webhook', async (req, res) => {
 app.get('/health', (_, res) => res.json({ status: 'ok', service: 'Medz on the Mix API' }));
 
 // ── Start ─────────────────────────────────────────────────
-app.listen(PORT, () => {
+app.listen(PORT,'0.0.0.0', () => {
   console.log(`Medz on the Mix backend running on port ${PORT}`);
 });
