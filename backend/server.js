@@ -128,7 +128,7 @@ app.post('/api/stripe-webhook', async (req, res) => {
 
       // 2. Save Booking to Supabase Database
       const insertQuery = `
-        INSERT INTO bookings (date, start_time, client_name, client_email, session_name)
+        INSERT INTO "Bookings" (date, start_time, client_name, client_email, session_name)
         VALUES ($1, $2, $3, $4, $5)
       `;
       const values = [m.date, m.time, m.clientName, m.clientEmail, m.sessionName];
