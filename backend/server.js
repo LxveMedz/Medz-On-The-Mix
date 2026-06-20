@@ -1,10 +1,17 @@
 require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
+const { Pool } = require('pg');
 const stripe  = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app  = express();
 const PORT = process.env.PORT || 8000;
+
+// ── Database Connection (Supabase) ────────────────────────
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false } // Required for Supabase connection pooling on Render
+});
 
 // ── Middleware ────────────────────────────────────────────
 // Webhook MUST receive raw body — register before express.json()
@@ -92,6 +99,7 @@ app.post('/api/stripe-webhook', async (req, res) => {
     console.log(`Payment confirmed for ${m.clientName} — ${m.sessionName} on ${m.date}`);
 
     try {
+      // 1. Send EmailJS Confirmation
       const emailRes = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -117,8 +125,19 @@ app.post('/api/stripe-webhook', async (req, res) => {
       } else {
         console.log('Confirmation email sent to', m.clientEmail);
       }
-    } catch (emailErr) {
-      console.error('Email send failed:', emailErr.message);
+
+      // 2. Save Booking to Supabase Database
+      const insertQuery = `
+        INSERT INTO bookings (date, start_time, client_name, client_email, session_name)
+        VALUES ($1, $2, $3, $4, $5)
+      `;
+      const values = [m.date, m.time, m.clientName, m.clientEmail, m.sessionName];
+      
+      await pool.query(insertQuery, values);
+      console.log('Successfully saved booking to Supabase database!');
+
+    } catch (err) {
+      console.error('Failed to process completed booking (email or DB insert):', err.message);
     }
   }
 
