@@ -257,6 +257,18 @@ function loadBookings(k){ try{ const v=localStorage.getItem("bk:"+k); return v?J
 function saveBooking(k,start,dur){ try{ const ex=loadBookings(k); ex.push({start,duration:dur}); localStorage.setItem("bk:"+k,JSON.stringify(ex)); }catch(e){} }
 function slotTaken(t,bks,h){ const s=TIME_TO_HOUR[t]; return bks.some(b=>s<b.start+b.duration&&s+h>b.start); }
 function slotFits(t,h){ return TIME_TO_HOUR[t]+h<=19; }
+
+function isSlotPast(t){
+  if(!state.selDate) return false;
+  const now = new Date();
+  const todayMidnight = new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const selMidnight   = new Date(state.selDate.year,state.selDate.month,state.selDate.day);
+  // Only filter past slots if selected date is today
+  if(selMidnight.getTime() !== todayMidnight.getTime()) return false;
+  const slotHour = TIME_TO_HOUR[t];
+  const currentHour = now.getHours() + (now.getMinutes()/60);
+  return slotHour <= currentHour;
+}
 function fmtDate(d){ return MONTHS[d.month]+" "+d.day+", "+d.year; }
 function show(id){ document.getElementById(id).classList.remove("hidden"); }
 function hide(id){ document.getElementById(id).classList.add("hidden"); }
@@ -390,16 +402,24 @@ function renderTimes(){
   const area=document.getElementById("time-area");
   if(!state.selDate){ area.innerHTML='<div class="no-date-msg">Select a date above to see available times.</div>'; return; }
   const wd=isWeekday(state.selDate);
-  const slots=wd?WEEKDAY_SLOTS:ALL_SLOTS;
+  let slots=wd?WEEKDAY_SLOTS:ALL_SLOTS;
+  const isToday=state.selDate.day===today.getDate()&&state.selDate.month===today.getMonth()&&state.selDate.year===today.getFullYear();
+  if(isToday){ const nowHour=new Date().getHours(); slots=slots.filter(t=>TIME_TO_HOUR[t]>nowHour); }
   const bks=getBookingsForDate(fmtDate(state.selDate));
   const h=state.session?state.session.hours:1;
+  if(slots.length===0){ area.innerHTML='<div class="no-date-msg">No more available times for today. Please select another date.</div>'; checkStep2(); return; }
   let out=wd?'<div class="notice-box">⏰ Mon–Thu availability: 4:00 PM – 7:00 PM only</div>':"";
   out+=`<div class="time-grid">${slots.map(t=>{
     const taken=slotTaken(t,bks,h);
     const noFit=wd&&!slotFits(t,h);
-    const dis=taken||noFit;
+    const past=isSlotPast(t);
+    const dis=taken||noFit||past;
     const sel=state.selTime===t;
-    return `<button class="time-btn${sel?" sel":""}${dis?" unavail":""}" onclick="selectTime('${t}')">${t}${taken?" — Booked":noFit?" — Too late":""}</button>`;
+    let label=t;
+    if(taken) label+=" — Booked";
+    else if(noFit) label+=" — Too late";
+    else if(past) label+=" — Passed";
+    return `<button class="time-btn${sel?" sel":""}${dis?" unavail":""}" onclick="selectTime('${t}')">${label}</button>`;
   }).join("")}</div>`;
   area.innerHTML=out;
   checkStep2();
